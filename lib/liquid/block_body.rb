@@ -131,6 +131,11 @@ module Liquid
       @blank
     end
 
+    def remove_blank_strings
+      raise "remove_blank_strings only support being called on a blank block body" unless @blank
+      @nodelist.reject! { |node| node.instance_of?(String) }
+    end
+
     def render(context)
       render_to_output_buffer(context, +'')
     end
@@ -148,7 +153,7 @@ module Liquid
         when Variable
           render_node(context, output, node)
         when Block
-          render_node(context, node.blank? ? +'' : output, node)
+          render_node(context, output, node)
           break if context.interrupt? # might have happened in a for-block
         when Continue, Break
           # If we get an Interrupt that means the block must stop processing. An

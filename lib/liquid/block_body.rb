@@ -136,12 +136,10 @@ module Liquid
     end
 
     def render_to_output_buffer(context, output)
-      context.resource_limits.render_score += @nodelist.length
+      context.resource_limits.increment_render_score(@nodelist.length)
 
       idx = 0
       while (node = @nodelist[idx])
-        previous_output_size = output.bytesize
-
         case node
         when String
           output << node
@@ -162,7 +160,7 @@ module Liquid
         end
         idx += 1
 
-        raise_if_resource_limits_reached(context, output.bytesize - previous_output_size)
+        context.resource_limits.check_render_length(output.bytesize)
       end
 
       output
@@ -174,15 +172,11 @@ module Liquid
       node.render_to_output_buffer(context, output)
     rescue UndefinedVariable, UndefinedDropMethod, UndefinedFilter => e
       context.handle_error(e, node.line_number)
+    rescue MemoryError
+      raise
     rescue ::StandardError => e
       line_number = node.is_a?(String) ? nil : node.line_number
       output << context.handle_error(e, line_number)
-    end
-
-    def raise_if_resource_limits_reached(context, length)
-      context.resource_limits.render_length += length
-      return unless context.resource_limits.reached?
-      raise MemoryError, "Memory limits exceeded"
     end
 
     def create_variable(token, parse_context)
